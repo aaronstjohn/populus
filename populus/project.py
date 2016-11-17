@@ -13,6 +13,9 @@ from populus.utils.filesystem import (
     get_migrations_dir,
     relpath,
 )
+from populus.utils.packaging import (
+    get_epm_json_path,
+)
 from populus.utils.chains import (
     get_data_dir,
     get_chaindata_dir,
@@ -107,6 +110,14 @@ class Project(object):
             return self.config.get('populus', 'project_dir')
         else:
             return os.getcwd()
+
+    #
+    # Packaging
+    #
+    @property
+    @relpath
+    def epm_json_path(self):
+        return get_epm_json_path(self.project_dir)
 
     #
     # Contracts
