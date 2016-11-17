@@ -1,4 +1,5 @@
 import os
+import json
 import hashlib
 
 from web3.utils.string import (
@@ -14,7 +15,7 @@ from populus.utils.filesystem import (
     relpath,
 )
 from populus.utils.packaging import (
-    get_epm_json_path,
+    get_package_manifest_path,
 )
 from populus.utils.chains import (
     get_data_dir,
@@ -115,9 +116,18 @@ class Project(object):
     # Packaging
     #
     @property
+    def has_package_manifest(self):
+        return os.path.exists(self.package_manifest_path)
+
+    @property
     @relpath
-    def epm_json_path(self):
-        return get_epm_json_path(self.project_dir)
+    def package_manifest_path(self):
+        return get_package_manifest_path(self.project_dir)
+
+    @property
+    def package_manifest(self):
+        with open(self.package_manifest_path) as package_manifest_file:
+            return json.load(package_manifest_file)
 
     #
     # Contracts
