@@ -196,7 +196,7 @@ def configure_chain(project, chain_name):
             "Populus needs to connect to the chain.  Press [Enter] when the "
             "chain is ready for populus"
         )
-        click.confirm(is_chain_ready_msg)
+        click.prompt(is_chain_ready_msg, default='')
 
     with project.get_chain(chain_name) as chain:
         web3 = chain.web3
@@ -205,7 +205,7 @@ def configure_chain(project, chain_name):
             "{0}.  Would you like to set a different default "
             "account?".format(web3.eth.defaultAccount)
         )
-        if click.confirm(choose_default_account_msg):
+        if click.confirm(choose_default_account_msg, default=False):
             default_account = select_account(chain)
             project.config.set(
                 chain_section_header, 'default_account', default_account,
@@ -435,13 +435,13 @@ def get_unlocked_deploy_from_address(chain):
     else:
         account = select_account(chain)
         set_as_deploy_from_msg = (
-            "Would you like set the address '{0}' as the default"
+            "Would you like set the address '{0}' as the default "
             "`deploy_from` address for the '{1}' chain?".format(
                 account,
                 chain_name,
             )
         )
-        if click.confirm(set_as_deploy_from_msg):
+        if click.confirm(set_as_deploy_from_msg, default=True):
             if not config.has_section(chain_section_name):
                 config.add_section(chain_section_name)
             config.set(chain_section_name, 'deploy_from', account)
@@ -521,7 +521,7 @@ def select_project_contract(project):
     ]
     select_contract_message = (
         "Please select the desired contract:\n\n"
-        "{0}".format(
+        "{0}\n\n".format(
             '\n'.join(contract_choices)
         )
     )

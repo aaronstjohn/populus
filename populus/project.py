@@ -2,6 +2,8 @@ import os
 import json
 import hashlib
 
+import ipfsapi
+
 from web3.utils.string import (
     is_string,
 )
@@ -111,6 +113,25 @@ class Project(object):
             return self.config.get('populus', 'project_dir')
         else:
             return os.getcwd()
+
+    #
+    # IPFS
+    #
+    @property
+    def ipfs_config(self):
+        if self.config.has_section('ipfs'):
+            return {
+                self.config.get('ipfs', option_key)
+                for option_key in self.config.options('ipfs')
+            }
+        else:
+            return {}
+
+    @property
+    def ipfs_client(self):
+        ipfs_host = self.ipfs_config.get('host', 'http://127.0.0.1')
+        ipfs_port = int(self.ipfs_config.get('port', 5001))
+        return ipfsapi.connect(ipfs_host, ipfs_port)
 
     #
     # Packaging

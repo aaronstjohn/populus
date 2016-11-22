@@ -35,8 +35,11 @@ def write_compiled_sources(project_dir, compiled_sources):
     return compiled_contract_path
 
 
+DEFAULT_OUTPUT_VALUES = ['bin', 'bin-runtime', 'abi', 'devdoc', 'userdoc']
+
+
 def compile_project_contracts(project_dir, contracts_dir, **compiler_kwargs):
-    compiler_kwargs.setdefault('output_values', ['bin', 'bin-runtime', 'abi'])
+    compiler_kwargs.setdefault('output_values', DEFAULT_OUTPUT_VALUES)
     contract_source_paths = find_project_contracts(project_dir, contracts_dir)
     try:
         compiled_sources = compile_files(contract_source_paths, **compiler_kwargs)
