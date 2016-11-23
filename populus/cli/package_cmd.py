@@ -5,19 +5,16 @@ import functools
 
 import ipfsapi
 
-from web3.utils.string import (
-    force_text,
-)
-
 from populus.utils.cli import (
     select_chain,
     select_project_contract,
     show_chain_sync_progress,
 )
+from populus.utils.filesystem import (
+    tempfile,
+)
 from populus.utils.ipfs import (
     create_ipfs_uri,
-    is_ipfs_uri,
-    extract_ipfs_path_from_uri,
 )
 from populus.utils.packaging import (
     enumerate_sources,
@@ -25,7 +22,8 @@ from populus.utils.packaging import (
     get_chain_id,
     create_transaction_uri,
     create_block_uri,
-    install_from_release_lock_file,
+    resolve_package_identifier,
+    install_single_package,
 )
 
 from .main import main
@@ -265,6 +263,8 @@ def package_release(ctx, chain_name, wait_for_sync):
     else:
         chain_definition = None
 
+    project_lockfile = project.project_lockfile
+
     raw_release_lock_data = {
         'lock_file_version': '1',
         'package_manifest': package_manifest_uri,
@@ -273,7 +273,11 @@ def package_release(ctx, chain_name, wait_for_sync):
         'sources': source_file_uris,
         'chain': chain_definition,
         'contracts': release_contracts,
-        'build_dependencies': {},  # TODO: pull from populus.lock
+        'build_dependencies': {
+            dependency_name: dependency_details['resolved']
+            for dependency_name, dependency_details
+            in project_lockfile.items()
+        },
     }
 
     release_lock_data = {
@@ -288,8 +292,8 @@ def package_release(ctx, chain_name, wait_for_sync):
         project.project_dir,
         '{0}.json'.format(package_manifest['version']),
     )
-    with open(outfile_path, 'w') as release_lock_file:
-        json.dump(release_lock_data, release_lock_file, sort_keys=True, indent=2)
+    with open(outfile_path, 'w') as release_lockfile_file:
+        json.dump(release_lock_data, release_lockfile_file, sort_keys=True, indent=2)
 
     click.echo("Wrote release lock file: {0}".format(outfile_path))
 
@@ -300,18 +304,40 @@ def package_release(ctx, chain_name, wait_for_sync):
 @click.pass_context
 def package_install(ctx, packages, save):
     """
-    Install a package.
+    Install package(s).
 
     1. Load package manifest.
+
+    TODO: figure out what the right steps are for this.  Should probably be a
+    multi-phase thing which first resolves all of the identifiers, then
+    resolves all dependencies for each identifier, then does the actual
+    installation.
     """
     project = ctx.obj['PROJECT']
-
-    ipfs_api = ipfsapi.connect('https://ipfs.infura.io', 5001)
+    project_lockfile = project.project_lockfile
 
     for package_identifier in packages:
-        if is_ipfs_uri(package_identifier):
-            ipfs_path = extract_ipfs_path_from_uri(package_identifier)
-            lockfile_contents = ipfs_api.cat(ipfs_path)
-            release_lockfile = json.loads(force_text(lockfile_contents))
-            # TODO: validate that it is in valid lockfile format.
-            install_from_release_lock_file(project, release_lockfile)
+        package_name, package_manifest, release_lockfile = resolve_package_identifier(
+            project,
+            package_identifier,
+        )
+        install_path = os.path.join(project.installed_contracts_dir, package_name)
+        # TODO: is it already installed?
+        # TODO: validate package_manifest is in the correct format.
+        # TODO: validate release_lockfile is in the correct format.
+        install_single_package(project, install_path, release_lockfile)
+
+        with tempfile() as tempfile_path:
+            with open(tempfile_path, 'w') as tempfile_file:
+                json.dump(release_lockfile, tempfile_file)
+            resolved_hash = project.ipfs_client.add(tempfile_path)['Hash']
+        # TODO: iteratively updating the lockfile feels wrong but it's a start.
+        project_lockfile[package_name] = {
+            'resolved_from': package_identifier,
+            'version': release_lockfile['version'],
+            'resolved': resolved_hash,
+            'dependencies': "TODO",
+        }
+
+    with open(project.project_lockfile_path, 'w') as project_lockfile_file:
+        json.dump(project_lockfile, project_lockfile_file, indent=2)

@@ -1,4 +1,8 @@
+import operator
+
 from urllib import parse  # TODO: python2
+
+from .functional import compose
 
 
 def create_ipfs_uri(ipfs_hash):
@@ -17,7 +21,6 @@ def is_ipfs_uri(value):
 
 def extract_ipfs_path_from_uri(value):
     parse_result = parse.urlparse(value)
-    print(parse_result.netloc, parse_result.path)
 
     if parse_result.netloc:
         if parse_result.path:
@@ -26,3 +29,68 @@ def extract_ipfs_path_from_uri(value):
             return parse_result.netloc
     else:
         return parse_result.path.lstrip('/')
+
+
+def resolve_ipfs_path_to_hash(ipfs_client, ipfs_path):
+    result = ipfs_client.resolve(ipfs_path)
+    resolved_path = result['Path']
+    _, _, ipfs_hash = resolved_path.rpartition('/')
+    return ipfs_hash
+
+
+def get_ipfs_object_type(ipfs_client, ipfs_path):
+    object_metadata = ipfs_client.file_ls(ipfs_path)
+
+    if not object_metadata:
+        return False
+
+    resolved_hash = object_metadata['Arguments'][ipfs_path]
+
+    type_getter = compose(
+        operator.itemgetter('Type'),
+        operator.itemgetter(resolved_hash),
+        operator.itemgetter('Objects'),
+    )
+
+    return type_getter(object_metadata)
+
+
+def is_directory(ipfs_client, ipfs_path):
+    return get_ipfs_object_type(ipfs_client, ipfs_path) == 'Directory'
+
+
+def is_file(ipfs_client, ipfs_path):
+    return get_ipfs_object_type(ipfs_client, ipfs_path) == 'File'
+
+
+def walk_ipfs_tree(ipfs_client, ipfs_path, prefix='./'):
+    """
+    Given an IPFS hash or path, this walks down the filesystem tree and returns
+    a generator of 2-tuples where the first item is the filesystem path and the
+    second value is the ipfs hash of the file that belongs at that hash
+    """
+    ipfs_hash = resolve_ipfs_path_to_hash(ipfs_client, ipfs_path)
+
+    if is_file(ipfs_client, ipfs_hash):
+        yield (prefix, ipfs_hash)
+    elif is_directory(ipfs_client, ipfs_hash):
+        links_getter = compose(
+            operator.itemgetter('Links'),
+            operator.itemgetter(ipfs_hash),
+            operator.itemgetter('Objects'),
+        )
+        links = links_getter(ipfs_client.file_ls(ipfs_hash))
+
+        for link in links:
+            link_hash = link['Hash']
+            link_name = link['Name']
+
+            if is_file(ipfs_client, link_hash):
+                sub_prefix = '{prefix}{name}'.format(prefix=prefix, name=link_name)
+                yield (sub_prefix, link_hash)
+            elif is_directory(ipfs_client, link_hash):
+                sub_prefix = '{prefix}{name}/'.format(prefix=prefix, name=link_name)
+                for value in walk_ipfs_tree(ipfs_client, link_hash, sub_prefix):
+                    yield value
+    else:
+        raise ValueError("Unsupported type.  Must be an IPFS file or directory")

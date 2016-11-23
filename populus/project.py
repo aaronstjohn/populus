@@ -17,6 +17,7 @@ from populus.utils.filesystem import (
     relpath,
 )
 from populus.utils.packaging import (
+    get_project_lockfile_path,
     get_package_manifest_path,
     get_installed_contracts_dir,
 )
@@ -122,7 +123,7 @@ class Project(object):
     def ipfs_config(self):
         if self.config.has_section('ipfs'):
             return {
-                self.config.get('ipfs', option_key)
+                option_key: self.config.get('ipfs', option_key)
                 for option_key in self.config.options('ipfs')
             }
         else:
@@ -137,6 +138,22 @@ class Project(object):
     #
     # Packaging
     #
+    @property
+    def has_project_lockfile(self):
+        return os.path.exists(self.project_lockfile_path)
+
+    @property
+    def project_lockfile_path(self):
+        return get_project_lockfile_path(self.project_dir)
+
+    @property
+    def project_lockfile(self):
+        if self.has_project_lockfile:
+            with open(self.project_lockfile_path) as project_lockfile:
+                return json.load(project_lockfile)
+        else:
+            return {}
+
     @property
     def has_package_manifest(self):
         return os.path.exists(self.package_manifest_path)

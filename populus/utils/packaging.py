@@ -1,4 +1,5 @@
 import os
+import re
 import glob
 import json
 from urllib import parse
@@ -15,6 +16,8 @@ from web3.utils.formatting import (
 
 from .ipfs import (
     is_ipfs_uri,
+    extract_ipfs_path_from_uri,
+    walk_ipfs_tree,
 )
 from .types import (
     is_integer,
@@ -23,6 +26,13 @@ from .filesystem import (
     recursive_find_files,
     ensure_path_exists,
 )
+
+
+PROJECT_LOCKFILE_FILENAME = 'populus.lock'
+
+
+def get_project_lockfile_path(project_dir):
+    return os.path.join(project_dir, PROJECT_LOCKFILE_FILENAME)
 
 
 PACKAGE_MANIFEST_FILENAME = 'epm.json'
@@ -137,7 +147,43 @@ def create_contract_instance_object(contract_name,
     return contract_instance_data
 
 
-def install_from_release_lock_file(project, release_lockfile):
+CONTRACT_NAME_REGEX = '^[_a-zA-Z][_a-zA-Z0-9]*$'
+
+
+def is_valid_contract_name(value):
+    return bool(re.match(CONTRACT_NAME_REGEX, value))
+
+
+def extract_package_manifest_from_lockfile(ipfs_client, release_lockfile):
+    if is_object(release_lockfile['package_manifest']):
+        return release_lockfile['package_manifest']
+    elif is_ipfs_uri(release_lockfile['package_manifest']):
+        package_manifest_ipfs_path = extract_ipfs_path_from_uri(
+            release_lockfile['package_manifest'],
+        )
+        return json.loads(force_text(ipfs_client.cat(
+            package_manifest_ipfs_path
+        )))
+    else:
+        raise ValueError("Unsupported format: {0}".format(release_lockfile['package_manifest']))
+
+
+def resolve_package_identifier(project, package_identifier):
+    if is_ipfs_uri(package_identifier):
+        ipfs_path = extract_ipfs_path_from_uri(package_identifier)
+        lockfile_contents = project.ipfs_client.cat(ipfs_path)
+        release_lockfile = json.loads(force_text(lockfile_contents))
+        package_manifest = extract_package_manifest_from_lockfile(
+            project.ipfs_client,
+            release_lockfile,
+        )
+        package_name = package_manifest['package_name']
+        return package_name, package_manifest, release_lockfile
+    else:
+        raise ValueError("Unsupported identifier: {0}".format(package_identifier))
+
+
+def install_single_package(project, install_path, release_lockfile):
     """
     * Ensure `./installed_contracts` exists.
     * Extract `package_name` from `release_lockfile.package_manifest.package_name`
@@ -147,19 +193,33 @@ def install_from_release_lock_file(project, release_lockfile):
     * Write the source file contents to the filesystem.
     """
     ensure_path_exists(project.installed_contracts_dir)
+    ipfs_client = project.ipfs_client
 
-    if is_ipfs_uri(release_lockfile['package_manifest']):
-        package_manifest_ipfs_path = extract_ipfs_path_from_uri(
-            release_lockfile['package_manifest_ipfs_path'],
-        )
-        package_manifest = json.loads(force_text(project.ipfs_client.cat(
-            package_manifest_ipfs_path
-        )))
-    elif is_object(release_lockfile['package_manifest']):
-        package_manifest = release_lockfile['package_manifest']
-    else:
-        raise ValueError("Unsupported format: {0}".format(release_lockfile['package_manifest']))
+    # TODO: what to do if this path already exists...
+    if os.path.exists(install_path):
+        raise ValueError("No support yet for installing over something that was previously there")
+    package_source_tree = release_lockfile.get('sources', {})
 
-    # TODO: the package name should not naively come from the package_manifest.
-    package_name = package_manifest['package_name']
-    installation_dir = os.path.join(project.installed_contracts_dir, package_name)
+    # TODO: ensure these paths are local and clean this nested insanity up.
+    for source_path, source_value in package_source_tree.items():
+        if not source_path.startswith('./'):
+            raise ValueError('Unsupported key format: {0}'.format(source_path))
+
+        source_base_path = os.path.join(install_path, source_path)
+
+        if is_ipfs_uri(source_value):
+            ipfs_path = extract_ipfs_path_from_uri(source_value)
+            for file_path, ipfs_hash in walk_ipfs_tree(ipfs_client, ipfs_path, source_base_path):  # NOQA
+                if os.path.exists(file_path):
+                    raise ValueError('Not overwriting file @ {0}'.format(file_path))
+                file_dir = os.path.dirname(file_path)
+                ensure_path_exists(file_dir)
+
+                with open(file_path, 'wb') as source_file:
+                    source_file.write(ipfs_client.cat(ipfs_hash))
+        else:
+            if os.path.exists(source_base_path):
+                raise ValueError('Not overwriting file @ {0}'.format(source_base_path))
+            source_content = source_value
+            with open(source_base_path, 'w') as source_file:
+                source_file.write(source_content)
