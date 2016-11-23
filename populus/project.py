@@ -18,6 +18,7 @@ from populus.utils.filesystem import (
 )
 from populus.utils.packaging import (
     get_package_manifest_path,
+    get_installed_contracts_dir,
 )
 from populus.utils.chains import (
     get_data_dir,
@@ -149,6 +150,11 @@ class Project(object):
     def package_manifest(self):
         with open(self.package_manifest_path) as package_manifest_file:
             return json.load(package_manifest_file)
+
+    @property
+    @relpath
+    def installed_contracts_dir(self):
+        return get_installed_contracts_dir(self.project_dir)
 
     #
     # Contracts

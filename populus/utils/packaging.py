@@ -1,16 +1,27 @@
 import os
 import glob
+import json
 from urllib import parse
 
+from web3.utils.types import (
+    is_object,
+)
+from web3.utils.string import (
+    force_text,
+)
 from web3.utils.formatting import (
     remove_0x_prefix,
 )
 
+from .ipfs import (
+    is_ipfs_uri,
+)
 from .types import (
     is_integer,
 )
 from .filesystem import (
     recursive_find_files,
+    ensure_path_exists,
 )
 
 
@@ -19,6 +30,13 @@ PACKAGE_MANIFEST_FILENAME = 'epm.json'
 
 def get_package_manifest_path(project_dir):
     return os.path.join(project_dir, PACKAGE_MANIFEST_FILENAME)
+
+
+INSTALLED_CONTRACTS_DIRNAME = 'installed_contracts'
+
+
+def get_installed_contracts_dir(project_dir):
+    return os.path.join(project_dir, INSTALLED_CONTRACTS_DIRNAME)
 
 
 def create_BIP122_uri(chain_id, resource_type, resource_identifier):
@@ -124,6 +142,24 @@ def install_from_release_lock_file(project, release_lockfile):
     * Ensure `./installed_contracts` exists.
     * Extract `package_name` from `release_lockfile.package_manifest.package_name`
     * Ensure `./installed_contracts/<package_name>` exists
+    * Something Something Dependencies....
     * Enumerate the contract source files.
     * Write the source file contents to the filesystem.
     """
+    ensure_path_exists(project.installed_contracts_dir)
+
+    if is_ipfs_uri(release_lockfile['package_manifest']):
+        package_manifest_ipfs_path = extract_ipfs_path_from_uri(
+            release_lockfile['package_manifest_ipfs_path'],
+        )
+        package_manifest = json.loads(force_text(project.ipfs_client.cat(
+            package_manifest_ipfs_path
+        )))
+    elif is_object(release_lockfile['package_manifest']):
+        package_manifest = release_lockfile['package_manifest']
+    else:
+        raise ValueError("Unsupported format: {0}".format(release_lockfile['package_manifest']))
+
+    # TODO: the package name should not naively come from the package_manifest.
+    package_name = package_manifest['package_name']
+    installation_dir = os.path.join(project.installed_contracts_dir, package_name)

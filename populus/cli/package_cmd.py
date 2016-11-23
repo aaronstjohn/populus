@@ -5,6 +5,10 @@ import functools
 
 import ipfsapi
 
+from web3.utils.string import (
+    force_text,
+)
+
 from populus.utils.cli import (
     select_chain,
     select_project_contract,
@@ -233,6 +237,13 @@ def package_release(ctx, chain_name, wait_for_sync):
                     **contract_data.get('userdoc', {}),
                     **contract_data.get('devdoc', {})
                 )
+                raw_data['compiler'] = {
+                    'type': 'solc',
+                    'version': contract_data['meta']['compilerVersion'],
+                    'settings': {
+                        'optimize': True,
+                    },
+                }
 
                 # TODO: verify that the contract at this address matches this bytecode.
                 raw_data['bytecode'] = contract_data['code']
@@ -301,6 +312,6 @@ def package_install(ctx, packages, save):
         if is_ipfs_uri(package_identifier):
             ipfs_path = extract_ipfs_path_from_uri(package_identifier)
             lockfile_contents = ipfs_api.cat(ipfs_path)
-            release_lockfile = json.loads(lockfile_contents)
+            release_lockfile = json.loads(force_text(lockfile_contents))
             # TODO: validate that it is in valid lockfile format.
             install_from_release_lock_file(project, release_lockfile)

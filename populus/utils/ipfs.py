@@ -17,11 +17,12 @@ def is_ipfs_uri(value):
 
 def extract_ipfs_path_from_uri(value):
     parse_result = parse.urlparse(value)
+    print(parse_result.netloc, parse_result.path)
 
     if parse_result.netloc:
         if parse_result.path:
-            return '/'.join((parse_result.netloc, parse_result.path))
+            return ''.join((parse_result.netloc, parse_result.path))
         else:
             return parse_result.netloc
     else:
-        return parse_result.path
+        return parse_result.path.lstrip('/')
