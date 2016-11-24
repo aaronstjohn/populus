@@ -47,9 +47,9 @@ def get_ipfs_object_type(ipfs_client, ipfs_path):
     resolved_hash = object_metadata['Arguments'][ipfs_path]
 
     type_getter = compose(
-        operator.itemgetter('Type'),
-        operator.itemgetter(resolved_hash),
         operator.itemgetter('Objects'),
+        operator.itemgetter(resolved_hash),
+        operator.itemgetter('Type'),
     )
 
     return type_getter(object_metadata)
@@ -75,9 +75,9 @@ def walk_ipfs_tree(ipfs_client, ipfs_path, prefix='./'):
         yield (prefix, ipfs_hash)
     elif is_directory(ipfs_client, ipfs_hash):
         links_getter = compose(
-            operator.itemgetter('Links'),
-            operator.itemgetter(ipfs_hash),
             operator.itemgetter('Objects'),
+            operator.itemgetter(ipfs_hash),
+            operator.itemgetter('Links'),
         )
         links = links_getter(ipfs_client.file_ls(ipfs_hash))
 

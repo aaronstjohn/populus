@@ -1,16 +1,24 @@
 import os
 import json
+import itertools
 
-from populus.utils.filesystem import (
-    get_compiled_contracts_file_path,
-    recursive_find_files,
-    DEFAULT_CONTRACTS_DIR
-)
 from solc import (
     compile_files,
 )
 from solc.exceptions import (
     ContractsNotFound,
+)
+
+from populus.utils.packaging import (
+    get_installed_contracts_dir,
+)
+from populus.utils.functional import (
+    cast_return_to_tuple,
+)
+from populus.utils.filesystem import (
+    get_compiled_contracts_file_path,
+    recursive_find_files,
+    DEFAULT_CONTRACTS_DIR
 )
 
 
@@ -20,6 +28,33 @@ def find_project_contracts(project_dir, contracts_rel_dir=DEFAULT_CONTRACTS_DIR)
     return tuple(
         os.path.relpath(p) for p in recursive_find_files(contracts_dir, "*.sol")
     )
+
+
+@cast_return_to_tuple
+def find_installed_package_contracts(project_dir):
+    installed_contracts_dir = get_installed_contracts_dir(project_dir)
+
+    # TODO: this should potentially be done at the package level rather than at
+    # the `./installed_contracts` level.
+    return (
+        os.path.relpath(source_path, project_dir)
+        for source_path
+        in recursive_find_files(installed_contracts_dir, '*.sol')
+    )
+
+
+@cast_return_to_tuple
+def compute_import_remappings(source_paths, installed_packages):
+    source_and_remapping_pairs = itertools.product(
+        sorted(source_paths),
+        sorted(installed_packages.items()),
+    )
+    for import_path, (package_name, package_source_dir) in source_and_remapping_pairs:
+        yield "{import_path}:{package_name}={package_source_dir}".format(
+            import_path=import_path,
+            package_name=package_name,
+            package_source_dir=package_source_dir,
+        )
 
 
 def write_compiled_sources(project_dir, compiled_sources):
@@ -38,21 +73,44 @@ def write_compiled_sources(project_dir, compiled_sources):
 DEFAULT_OUTPUT_VALUES = ['bin', 'bin-runtime', 'abi', 'devdoc', 'userdoc']
 
 
-def compile_project_contracts(project_dir, contracts_dir, **compiler_kwargs):
+def compile_project_contracts(project_dir,
+                              contracts_dir,
+                              installed_packages,
+                              **compiler_kwargs):
     compiler_kwargs.setdefault('output_values', DEFAULT_OUTPUT_VALUES)
-    contract_source_paths = find_project_contracts(project_dir, contracts_dir)
+
+    project_source_paths = find_project_contracts(project_dir, contracts_dir)
+    installed_package_source_paths = find_installed_package_contracts(project_dir)
+
+    import_remappings = compute_import_remappings(project_source_paths, installed_packages)
+
+    all_source_paths = tuple(itertools.chain(
+        project_source_paths,
+        installed_package_source_paths,
+    ))
+
+    import pdb; pdb.set_trace()
+
     try:
-        compiled_sources = compile_files(contract_source_paths, **compiler_kwargs)
+        compiled_sources = compile_files(
+            all_source_paths,
+            import_remappings=import_remappings,
+            **compiler_kwargs
+        )
     except ContractsNotFound:
-        return contract_source_paths, {}
+        return project_source_paths, {}
 
-    return contract_source_paths, compiled_sources
+    return project_source_paths, compiled_sources
 
 
-def compile_and_write_contracts(project_dir, contracts_dir, **compiler_kwargs):
+def compile_and_write_contracts(project_dir,
+                                contracts_dir,
+                                installed_packages,
+                                **compiler_kwargs):
     contract_source_paths, compiled_sources = compile_project_contracts(
         project_dir,
         contracts_dir,
+        installed_packages,
         **compiler_kwargs
     )
 

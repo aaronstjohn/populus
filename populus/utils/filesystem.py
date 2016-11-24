@@ -7,6 +7,10 @@ import contextlib
 import functools
 import errno
 
+from populus.utils.functional import (
+    cast_return_to_tuple,
+)
+
 
 if sys.version_info.major == 2:
     FileNotFoundError = OSError
@@ -123,6 +127,7 @@ def is_executable_available(program):
     return False
 
 
+@cast_return_to_tuple
 def recursive_find_files(base_dir, pattern):
     for dirpath, _, filenames in os.walk(base_dir):
         for filename in filenames:

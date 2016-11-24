@@ -461,13 +461,14 @@ def get_unlocked_deploy_from_address(chain):
     return account
 
 
-def compile_project_contracts(project, optimize=True):
+def compile_contracts(project, optimize=True):
     click.echo("============ Compiling ==============")
     click.echo("> Loading source files from: ./{0}\n".format(project.contracts_dir))
 
     result = compile_and_write_contracts(
         project.project_dir,
         project.contracts_dir,
+        project.installed_packages,
         optimize=optimize
     )
     contract_source_paths, compiled_sources, output_file_path = result
@@ -505,7 +506,7 @@ def watch_project_contracts(project, **compile_kwargs):
                     continue
                 last_hash = current_hash
                 click.echo("Change detected in: {e.path}".format(e=event))
-                compile_project_contracts(project, **compile_kwargs)
+                compile_contracts(project, **compile_kwargs)
     except KeyboardInterrupt:
         pass
 

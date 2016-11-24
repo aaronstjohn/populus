@@ -8,6 +8,9 @@ from web3.utils.string import (
     is_string,
 )
 
+from populus.utils.functional import (
+    cast_return_to_dict,
+)
 from populus.utils.filesystem import (
     get_contracts_dir,
     get_build_dir,
@@ -172,6 +175,18 @@ class Project(object):
     @relpath
     def installed_contracts_dir(self):
         return get_installed_contracts_dir(self.project_dir)
+
+    @property
+    @cast_return_to_dict
+    def installed_packages(self):
+        installed_contracts_dir = self.installed_contracts_dir
+
+        for package_name, _ in self.project_lockfile.items():
+            package_source_dir = os.path.relpath(
+                os.path.join(installed_contracts_dir, package_name),
+                self.project_dir,
+            )
+            yield (package_name, package_source_dir)
 
     #
     # Contracts
