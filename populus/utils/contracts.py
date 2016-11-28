@@ -8,7 +8,7 @@ from .filesystem import (
     get_compiled_contracts_file_path,
 )
 from .linking import (
-    get_contract_library_dependencies,
+    extract_link_reference_names,
 )
 
 
@@ -61,8 +61,8 @@ def get_shallow_dependency_graph(contracts):
     Given a dictionary of compiled contract data, this returns a *shallow*
     dependency graph of each contracts explicit link dependencies.
     """
-    dependencies = {
-        contract_name: get_contract_library_dependencies(
+    link_dependencies = {
+        contract_name: extract_link_reference_names(
             contract_data['code'],
             contracts.keys(),
         )
@@ -70,10 +70,14 @@ def get_shallow_dependency_graph(contracts):
         in contracts.items()
         if contract_data.get('code') is not None
     }
-    return dependencies
+    return link_dependencies
 
 
 def get_contract_deploy_order(dependency_graph):
+    """
+    Given a dictionary that maps contract names to their link dependencies,
+    determine the overall dependency ordering for that set of contracts.
+    """
     return toposort.toposort_flatten(dependency_graph)
 
 
@@ -82,9 +86,9 @@ def get_recursive_contract_dependencies(contract_name, dependency_graph):
     Recursive computation of the linker dependencies for a specific contract
     within a contract dependency graph.
     """
-    return set(itertools.chain(
-        dependency_graph.get(contract_name, set()), *(
-            get_recursive_contract_dependencies(dep, dependency_graph)
-            for dep in dependency_graph.get(contract_name, set())
-        )
+    direct_dependencies = dependency_graph.get(contract_name, set())
+    sub_dependencies = itertools.chain.from_iterable((
+        get_recursive_contract_dependencies(dep, dependency_graph)
+        for dep in direct_dependencies
     ))
+    return set(itertools.chain(direct_dependencies, sub_dependencies))

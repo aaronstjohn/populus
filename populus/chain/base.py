@@ -24,7 +24,7 @@ from populus.utils.contracts import (
 )
 from populus.utils.linking import (
     link_bytecode,
-    get_contract_library_dependencies,
+    extract_link_reference_names,
 )
 
 from populus.migrations.migration import (
@@ -154,19 +154,9 @@ class Chain(object):
     #
     # Utility
     #
-    def _extract_library_dependencies(self, bytecode, link_dependencies=None, known_contract_names=None):
-        if link_dependencies is None:
-            link_dependencies = {}
-
-        all_known_contract_names = set(link_dependencies.keys()).union(
-            self.contract_factories.keys(),
-        )
-
-        library_dependencies = get_contract_library_dependencies(
-            bytecode,
-            all_known_contract_names,
-        )
-        return library_dependencies
+    @property
+    def all_contract_names(self):
+        return set(self.contract_factories.keys())
 
     def _link_code(self, bytecodes,
                    link_value_overrides=None,
@@ -175,8 +165,10 @@ class Chain(object):
         if link_value_overrides is None:
             link_value_overrides = {}
 
+        all_full_names = set(link_value_overrides.keys()).union(self.all_contract_names)
+
         library_dependencies = set(itertools.chain.from_iterable(
-            self._extract_library_dependencies(bytecode, link_value_overrides)
+            extract_link_reference_names(bytecode, all_full_names)
             for bytecode in bytecodes
         ))
 

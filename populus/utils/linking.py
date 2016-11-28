@@ -43,27 +43,20 @@ def find_link_references(bytecode):
     return link_references
 
 
-def make_link_regex(contract_name):
+def expand_shortened_reference_name(short_name, all_full_names):
     """
-    Returns a regex that will match embedded link references within a
-    contract's bytecode.
-    """
-    return re.compile(
-        contract_name[:36].ljust(38, "_").rjust(40, "_")
-    )
+    Link references whos names are longer than their bytecode representations
+    will get truncated to 4 characters short of their full name because of the
+    double underscore prefix and suffix.
 
-
-def expand_shortened_reference_name(name, full_names):
+    This expands `short_name` to it's full name or raise a value error if it is
+    unable to find an appropriate expansion.
     """
-    If a contract dependency has a name longer than 36 characters then the name
-    is truncated in the compiled but unlinked bytecode.  This maps a name to
-    it's full name.
-    """
-    if name in full_names:
-        return name
+    if short_name in all_full_names:
+        return short_name
 
     candidates = [
-        n for n in full_names if n.startswith(name)
+        full_name for full_name in all_full_names if full_name.startswith(short_name)
     ]
     if len(candidates) == 1:
         return candidates[0]
@@ -71,22 +64,36 @@ def expand_shortened_reference_name(name, full_names):
         raise ValueError(
             "Multiple candidates found trying to expand '{0}'.  Found '{1}'. "
             "Searched '{2}'".format(
-                name,
+                short_name,
                 ','.join(candidates),
-                ','.join(full_names),
+                ','.join(all_full_names),
             )
         )
     else:
         raise ValueError(
             "Unable to expand '{0}'. "
             "Searched '{1}'".format(
-                name,
-                ','.join(full_names),
+                short_name,
+                ','.join(all_full_names),
             )
         )
 
 
-def link_bytecode(bytecode, **dependencies):
+def make_link_regex(contract_name, length=40):
+    """
+    Returns a regex that will match embedded link references within a
+    contract's bytecode.
+    """
+    name_trunc = length - 4
+    left_justify = length - 2
+
+    link_regex = re.compile(
+        contract_name[:name_trunc].ljust(left_justify, "_").rjust(length, "_")
+    )
+    return link_regex
+
+
+def link_bytecode(bytecode, **link_values):
     """
     Given the bytecode for a contract, and it's dependencies in the form of
     {contract_name: address} this functino returns the bytecode with all of the
@@ -95,15 +102,15 @@ def link_bytecode(bytecode, **dependencies):
     linker_fn = compose(*(
         functools.partial(
             make_link_regex(name).sub,
-            remove_0x_prefix(address),
+            remove_0x_prefix(value),
         )
-        for name, address in dependencies.items()
+        for name, value in link_values.items()
     ))
     linked_bytecode = linker_fn(bytecode)
     return linked_bytecode
 
 
-def get_contract_library_dependencies(bytecode, full_contract_names=None):
+def extract_link_reference_names(bytecode, full_contract_names=None):
     """
     Given a contract bytecode and an iterable of all of the known full names of
     contracts, returns a set of the contract names that this contract bytecode
@@ -114,7 +121,7 @@ def get_contract_library_dependencies(bytecode, full_contract_names=None):
     """
     expand_fn = functools.partial(
         expand_shortened_reference_name,
-        full_names=full_contract_names,
+        all_full_names=full_contract_names,
     )
     return {
         expand_fn(name) for name in find_link_references(bytecode)

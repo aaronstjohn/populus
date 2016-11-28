@@ -5,7 +5,7 @@ from web3.utils.string import (
 )
 
 from populus.utils.contracts import (
-    get_contract_library_dependencies,
+    extract_link_reference_names,
 )
 from populus.utils.deploy import (
     deploy_contract,
@@ -173,18 +173,18 @@ class DeployContract(Operation):
         all_known_contract_names = set(libraries.keys()).union(
             set(compiled_contracts.keys())
         )
-        library_dependencies = get_contract_library_dependencies(
+        link_references = extract_link_reference_names(
             BaseContractFactory.code,
             all_known_contract_names,
         )
 
         registrar = chain.registrar
 
-        def resolve_library_link(library_name):
-            registrar_key = "contract/{0}".format(library_name)
+        def resolve_link_name(link_name):
+            registrar_key = "contract/{0}".format(link_name)
 
-            if library_name in libraries:
-                return libraries[library_name]
+            if link_name in libraries:
+                return libraries[link_name]
             elif registrar.call().exists(registrar_key):
                 library_address = registrar.call().getAddress(registrar_key)
                 # TODO: implement validation that this contract address is
@@ -192,13 +192,13 @@ class DeployContract(Operation):
                 return library_address
             else:
                 raise ValueError(
-                    "Unable to find address for library '{0}'".format(library_name)
+                    "Unable to resolve link reference '{0}'".format(link_name)
                 )
 
-        link_dependencies = {
-            dependency_name: resolve_library_link(dependency_name)
-            for dependency_name
-            in library_dependencies
+        link_values = {
+            reference_name: resolve_link_name(reference_name)
+            for reference_name
+            in link_references
         }
 
         deploy_transaction_hash, contract_factory = deploy_contract(
@@ -207,7 +207,7 @@ class DeployContract(Operation):
             contract_factory=BaseContractFactory,
             deploy_transaction=transaction,
             deploy_arguments=arguments,
-            link_dependencies=link_dependencies,
+            link_values=link_values,
         )
 
         if timeout is not None:

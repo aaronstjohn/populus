@@ -39,14 +39,14 @@ def deploy_contract(chain,
                     contract_factory=None,
                     deploy_transaction=None,
                     deploy_arguments=None,
-                    link_dependencies=None):
+                    link_values=None):
     if contract_factory is None:
         contract_factory = chain.contract_factories[contract_name]
 
     web3 = chain.web3
 
-    code = link_bytecode(contract_factory.code, **link_dependencies)
-    code_runtime = link_bytecode(contract_factory.code_runtime, **link_dependencies)
+    code = link_bytecode(contract_factory.code, **link_values)
+    code_runtime = link_bytecode(contract_factory.code_runtime, **link_values)
 
     ContractFactory = web3.eth.contract(
         abi=contract_factory.abi,
