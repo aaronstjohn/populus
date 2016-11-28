@@ -26,13 +26,9 @@ from .filesystem import (
     recursive_find_files,
     ensure_path_exists,
 )
-
-
-PROJECT_LOCKFILE_FILENAME = 'populus.lock'
-
-
-def get_project_lockfile_path(project_dir):
-    return os.path.join(project_dir, PROJECT_LOCKFILE_FILENAME)
+from .functional import (
+    cast_return_to_tuple,
+)
 
 
 PACKAGE_MANIFEST_FILENAME = 'epm.json'
@@ -42,11 +38,34 @@ def get_package_manifest_path(project_dir):
     return os.path.join(project_dir, PACKAGE_MANIFEST_FILENAME)
 
 
-INSTALLED_CONTRACTS_DIRNAME = 'installed_contracts'
+INSTALLED_PACKAGES_ROOT_DIRNAME = 'installed_packages'
 
 
-def get_installed_contracts_dir(project_dir):
-    return os.path.join(project_dir, INSTALLED_CONTRACTS_DIRNAME)
+def get_installed_packages_root_dir(project_dir):
+    return os.path.join(project_dir, INSTALLED_PACKAGES_ROOT_DIRNAME)
+
+
+def get_installed_packages_dir(project_dir, chain_name):
+    installed_packages_root = get_installed_packages_root_dir(project_dir)
+    return os.path.join(installed_packages_root, chain_name)
+
+
+@cast_return_to_tuple
+def find_installed_package_source_files(installed_packages_dir):
+    # TODO: this should not recurse into nested `./installed_packages` directories.
+    return (
+        os.path.relpath(source_path)
+        for source_path
+        in recursive_find_files(installed_packages_dir, '*.sol')
+    )
+
+
+CHAIN_LOCKFILE_FILENAME = 'populus.lock'
+
+
+def get_chain_lockfile_path(project_dir, chain_name):
+    installed_contracts_dir = get_installed_packages_dir(project_dir, chain_name)
+    return os.path.join(installed_contracts_dir, CHAIN_LOCKFILE_FILENAME)
 
 
 def create_BIP122_uri(chain_id, resource_type, resource_identifier):
@@ -55,8 +74,8 @@ def create_BIP122_uri(chain_id, resource_type, resource_identifier):
     """
     return parse.urlunsplit([
         'blockchain',
-        chain_id,
-        "{0}/{1}".format(resource_type, resource_identifier),
+        remove_0x_prefix(chain_id),
+        "{0}/{1}".format(resource_type, remove_0x_prefix(resource_identifier)),
         '',
         '',
     ])
@@ -85,6 +104,22 @@ def get_chain_definition(web3):
     latest_block_hash = web3.eth.getBlock('latest')['hash']
 
     return create_block_uri(chain_id, latest_block_hash)
+
+
+def parse_BIP122_uri(blockchain_uri):
+    parse_result = parse.urlparse(blockchain_uri)
+
+    if parse_result.netloc:
+        if parse_result.path:
+            return ''.join((parse_result.netloc, parse_result.path))
+        else:
+            return parse_result.netloc
+    else:
+        return parse_result.path.lstrip('/')
+
+
+def check_if_chain_matches_chain_uris(web3, *chain_uris):
+    pass
 
 
 def enumerate_sources(source_paths_or_globs):

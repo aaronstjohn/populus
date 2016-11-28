@@ -300,9 +300,17 @@ def package_release(ctx, chain_name, wait_for_sync):
 
 @package_cmd.command('install')
 @click.argument('packages', nargs=-1)
+@click.option(
+    'chain_name',
+    '--chain',
+    '-c',
+    help=(
+        "Specifies the chain on which this installation should happen."
+    ),
+)
 @click.option('--save/--no-save', default=True, help="Save package into manifest dependencies")
 @click.pass_context
-def package_install(ctx, packages, save):
+def package_install(ctx, packages, chain_name, save):
     """
     Install package(s).
 
@@ -337,7 +345,17 @@ def package_install(ctx, packages, save):
             'version': release_lockfile['version'],
             'resolved': resolved_hash,
             'dependencies': "TODO",
+            'link_values': {
+                key: value['address']
+                for key, value
+                in release_lockfile.get('contracts', {})
+                if 'address' in value
+            }
         }
+
+    if save:
+        # TODO: save this to the `epm.json` file.
+        pass
 
     with open(project.project_lockfile_path, 'w') as project_lockfile_file:
         json.dump(project_lockfile, project_lockfile_file, indent=2)

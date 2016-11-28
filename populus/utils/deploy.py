@@ -5,6 +5,8 @@ from populus.utils.contracts import (
     get_shallow_dependency_graph,
     get_contract_deploy_order,
     get_recursive_contract_dependencies,
+)
+from populus.utils.linking import (
     link_bytecode,
 )
 

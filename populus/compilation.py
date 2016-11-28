@@ -10,7 +10,7 @@ from solc.exceptions import (
 )
 
 from populus.utils.packaging import (
-    get_installed_contracts_dir,
+    find_installed_package_source_files,
 )
 from populus.utils.functional import (
     cast_return_to_tuple,
@@ -27,19 +27,6 @@ def find_project_contracts(project_dir, contracts_rel_dir=DEFAULT_CONTRACTS_DIR)
 
     return tuple(
         os.path.relpath(p) for p in recursive_find_files(contracts_dir, "*.sol")
-    )
-
-
-@cast_return_to_tuple
-def find_installed_package_contracts(project_dir):
-    installed_contracts_dir = get_installed_contracts_dir(project_dir)
-
-    # TODO: this should potentially be done at the package level rather than at
-    # the `./installed_contracts` level.
-    return (
-        os.path.relpath(source_path, project_dir)
-        for source_path
-        in recursive_find_files(installed_contracts_dir, '*.sol')
     )
 
 
@@ -80,7 +67,7 @@ def compile_project_contracts(project_dir,
     compiler_kwargs.setdefault('output_values', DEFAULT_OUTPUT_VALUES)
 
     project_source_paths = find_project_contracts(project_dir, contracts_dir)
-    installed_package_source_paths = find_installed_package_contracts(project_dir)
+    installed_package_source_paths = find_installed_package_source_files(project_dir)
 
     import_remappings = compute_import_remappings(project_source_paths, installed_packages)
 
@@ -89,8 +76,6 @@ def compile_project_contracts(project_dir,
         installed_package_source_paths,
     ))
 
-    import pdb; pdb.set_trace()
-
     try:
         compiled_sources = compile_files(
             all_source_paths,
@@ -98,7 +83,7 @@ def compile_project_contracts(project_dir,
             **compiler_kwargs
         )
     except ContractsNotFound:
-        return project_source_paths, {}
+        return all_source_paths, {}
 
     return project_source_paths, compiled_sources
 

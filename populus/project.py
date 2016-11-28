@@ -8,9 +8,6 @@ from web3.utils.string import (
     is_string,
 )
 
-from populus.utils.functional import (
-    cast_return_to_dict,
-)
 from populus.utils.filesystem import (
     get_contracts_dir,
     get_build_dir,
@@ -20,11 +17,10 @@ from populus.utils.filesystem import (
     relpath,
 )
 from populus.utils.packaging import (
-    get_project_lockfile_path,
     get_package_manifest_path,
-    get_installed_contracts_dir,
+    get_installed_packages_root_dir,
 )
-from populus.utils.chains import (
+from populus.utils.geth import (
     get_data_dir,
     get_chaindata_dir,
     get_dapp_dir,
@@ -142,22 +138,6 @@ class Project(object):
     # Packaging
     #
     @property
-    def has_project_lockfile(self):
-        return os.path.exists(self.project_lockfile_path)
-
-    @property
-    def project_lockfile_path(self):
-        return get_project_lockfile_path(self.project_dir)
-
-    @property
-    def project_lockfile(self):
-        if self.has_project_lockfile:
-            with open(self.project_lockfile_path) as project_lockfile:
-                return json.load(project_lockfile)
-        else:
-            return {}
-
-    @property
     def has_package_manifest(self):
         return os.path.exists(self.package_manifest_path)
 
@@ -173,20 +153,8 @@ class Project(object):
 
     @property
     @relpath
-    def installed_contracts_dir(self):
-        return get_installed_contracts_dir(self.project_dir)
-
-    @property
-    @cast_return_to_dict
-    def installed_packages(self):
-        installed_contracts_dir = self.installed_contracts_dir
-
-        for package_name, _ in self.project_lockfile.items():
-            package_source_dir = os.path.relpath(
-                os.path.join(installed_contracts_dir, package_name),
-                self.project_dir,
-            )
-            yield (package_name, package_source_dir)
+    def installed_packages_root_dir(self):
+        return get_installed_packages_root_dir(self.project_dir)
 
     #
     # Contracts
@@ -253,6 +221,7 @@ class Project(object):
             _, self._cached_compiled_contracts = compile_project_contracts(
                 project_dir=self.project_dir,
                 contracts_dir=self.contracts_dir,
+                installed_packages=self.installed_packages,
                 optimize=True,
             )
         return self._cached_compiled_contracts

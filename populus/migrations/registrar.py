@@ -5,7 +5,7 @@ from solc import (
     get_solc_version,
 )
 
-from populus.utils.contracts import (
+from populus.utils.linking import (
     link_bytecode,
 )
 

@@ -12,6 +12,14 @@ from .main import main
 
 @main.command('compile')
 @click.option(
+    'chain_name',
+    '--chain',
+    '-c',
+    help=(
+        "Specifies which chain the contracts should be compiled against."
+    ),
+)
+@click.option(
     '--watch',
     '-w',
     is_flag=True,
@@ -25,7 +33,7 @@ from .main import main
     help="Enable compile time optimization",
 )
 @click.pass_context
-def compile_cmd(ctx, watch, optimize):
+def compile_cmd(ctx, chain_name, watch, optimize):
     """
     Compile project contracts, storing their output in `./build/contracts.json`
 

@@ -8,8 +8,8 @@ try:
 except ImportError:
     from backports import configparser
 
-from .chains import (
-    get_default_ipc_path,
+from .geth import (
+    get_geth_default_ipc_path,
 )
 
 
@@ -29,12 +29,12 @@ TESTRPC_DEFAULTS = {
 
 MAINNET_DEFAULTS = {
     'provider': 'web3.providers.ipc.IPCProvider',
-    'ipc_path': get_default_ipc_path(testnet=False),
+    'ipc_path': get_geth_default_ipc_path(testnet=False),
 }
 
 MORDEN_DEFAULTS = {
     'provider': 'web3.providers.ipc.IPCProvider',
-    'ipc_path': get_default_ipc_path(testnet=True),
+    'ipc_path': get_geth_default_ipc_path(testnet=True),
 }
 
 

@@ -4,7 +4,13 @@ import datetime
 
 from .filesystem import (
     get_blockchains_dir,
+    remove_dir_if_exists,
+    remove_file_if_exists,
 )
+
+
+ROPSTEN_BLOCK_0_HASH = '0x41941023680923e0fe4d74a34bdac8141f2540e3ae90623718e47d66d1ca4a2d'
+MAINNET_BLOCK_0_HASH = '0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3'
 
 
 def get_data_dir(project_dir, chain_name):
@@ -40,7 +46,7 @@ def get_geth_ipc_path(data_dir):
     return os.path.join(data_dir, IPC_FILENAME)
 
 
-def get_default_datadir_path(testnet=False):
+def get_geth_default_datadir_path(testnet=False):
     if testnet:
         testnet = "testnet"
     else:
@@ -73,8 +79,8 @@ def get_default_datadir_path(testnet=False):
         )
 
 
-def get_default_ipc_path(testnet=False):
-    data_dir = get_default_datadir_path(testnet=testnet)
+def get_geth_default_ipc_path(testnet=False):
+    data_dir = get_geth_default_datadir_path(testnet=testnet)
 
     if sys.platform == 'darwin' or sys.platform.startswith('linux'):
         return os.path.join(data_dir, "geth.ipc")
@@ -100,3 +106,17 @@ def get_geth_logfile_path(project_dir, prefix, suffix):
         ),
     )
     return os.path.join(logs_dir, logfile_name)
+
+
+def reset_chain(data_dir):
+    chaindata_dir = get_chaindata_dir(data_dir)
+    remove_dir_if_exists(chaindata_dir)
+
+    dapp_dir = get_dapp_dir(data_dir)
+    remove_dir_if_exists(dapp_dir)
+
+    nodekey_path = get_nodekey_path(data_dir)
+    remove_file_if_exists(nodekey_path)
+
+    geth_ipc_path = get_geth_ipc_path(data_dir)
+    remove_file_if_exists(geth_ipc_path)

@@ -1,5 +1,3 @@
-import operator
-
 from urllib import parse  # TODO: python2
 
 from .functional import compose
@@ -74,12 +72,7 @@ def walk_ipfs_tree(ipfs_client, ipfs_path, prefix='./'):
     if is_file(ipfs_client, ipfs_hash):
         yield (prefix, ipfs_hash)
     elif is_directory(ipfs_client, ipfs_hash):
-        links_getter = compose(
-            operator.itemgetter('Objects'),
-            operator.itemgetter(ipfs_hash),
-            operator.itemgetter('Links'),
-        )
-        links = links_getter(ipfs_client.file_ls(ipfs_hash))
+        links = ipfs_client.file_ls(ipfs_hash)['Objects'][ipfs_hash]['Links']
 
         for link in links:
             link_hash = link['Hash']
