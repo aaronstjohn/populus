@@ -6,7 +6,7 @@ from populus.utils.filesystem import (
     get_blockchains_dir,
     is_same_path,
 )
-from populus.utils.chains import (
+from populus.utils.geth import (
     get_data_dir,
     get_chaindata_dir,
     get_geth_ipc_path,

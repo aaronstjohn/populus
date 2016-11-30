@@ -14,9 +14,11 @@ from populus.utils.cli import (
     show_chain_sync_progress,
     get_unlocked_deploy_from_address,
 )
-from populus.chain import (
-    BaseGethChain,
+from populus.utils.geth import (
     reset_chain,
+)
+from populus.chain.geth import (
+    BaseGethChain,
 )
 
 from .main import main

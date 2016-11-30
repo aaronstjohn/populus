@@ -6,7 +6,7 @@ from hypothesis import (
 )
 import pytest
 
-from populus.utils.contracts import (
+from populus.utils.linking import (
     expand_shortened_reference_name,
 )
 

@@ -25,3 +25,12 @@ class UnknownContract(ContractError):
     contracts.
     """
     pass
+
+
+class LinkValueLengthMismatch(ContractError):
+    """
+    Raised when the bytecode length of a link value does not match the required
+    length for the necessary link reference, such as a 32-byte value being
+    provided for an address sized link reference.
+    """
+    pass

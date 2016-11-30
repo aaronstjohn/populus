@@ -1,8 +1,5 @@
 import pytest
 
-from populus.utils.contracts import (
-    link_bytecode,
-)
 from populus import Project
 
 
@@ -67,8 +64,14 @@ def multiply_13(testrpc_chain, library_13):
 
     Multiply13 = chain.contract_factories['Multiply13']
 
-    code = link_bytecode(Multiply13.code, Library13=library_13.address)
-    code_runtime = link_bytecode(Multiply13.code_runtime, Library13=library_13.address)
+    code = chain.link_bytecode(
+        Multiply13.code,
+        static_link_values={'Library13': library_13.address},
+    )
+    code_runtime = chain.link_bytecode(
+        Multiply13.code_runtime,
+        static_link_values={'Library13': library_13.address},
+    )
 
     LinkedMultiply13 = chain.web3.eth.contract(
         abi=Multiply13.abi,

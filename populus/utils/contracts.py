@@ -4,11 +4,15 @@ import json
 
 import toposort
 
+from web3.utils.types import (
+    is_string,
+)
+
 from .filesystem import (
     get_compiled_contracts_file_path,
 )
 from .linking import (
-    extract_link_reference_names,
+    find_link_references,
 )
 
 
@@ -62,13 +66,13 @@ def get_shallow_dependency_graph(contracts):
     dependency graph of each contracts explicit link dependencies.
     """
     link_dependencies = {
-        contract_name: extract_link_reference_names(
+        contract_name: set(ref['full_name'] for ref in find_link_references(
             contract_data['code'],
             contracts.keys(),
-        )
+        ))
         for contract_name, contract_data
         in contracts.items()
-        if contract_data.get('code') is not None
+        if is_string(contract_data.get('code'))
     }
     return link_dependencies
 

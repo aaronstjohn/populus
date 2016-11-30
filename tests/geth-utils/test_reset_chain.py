@@ -4,7 +4,7 @@ from populus.utils.filesystem import (
     ensure_path_exists,
 )
 from populus.project import Project
-from populus.chain import (
+from populus.utils.geth import (
     reset_chain,
 )
 

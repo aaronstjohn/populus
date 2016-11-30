@@ -9,10 +9,6 @@ from .filesystem import (
 )
 
 
-ROPSTEN_BLOCK_0_HASH = '0x41941023680923e0fe4d74a34bdac8141f2540e3ae90623718e47d66d1ca4a2d'
-MAINNET_BLOCK_0_HASH = '0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3'
-
-
 def get_data_dir(project_dir, chain_name):
     blockchains_dir = get_blockchains_dir(project_dir)
     return os.path.join(blockchains_dir, chain_name)

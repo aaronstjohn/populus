@@ -5,9 +5,6 @@ from populus.migrations import (
     DeployContract,
     Address,
 )
-from populus.utils.contracts import (
-    link_bytecode,
-)
 
 
 @pytest.fixture()
@@ -76,13 +73,13 @@ def verify_multiply_13_linked(library_13, deploy_chain):
         deploy_txn = web3.eth.getTransaction(deploy_txn_hash)
         contract_address = chain.wait.for_contract_address(deploy_txn_hash, timeout=30)
 
-        expected_code = link_bytecode(
+        expected_code = chain.link_bytecode(
             MULTIPLY_13['code'],
-            Library13=library_13.address,
+            static_link_values={'Library13': library_13.address},
         )
-        expected_runtime = link_bytecode(
+        expected_runtime = chain.link_bytecode(
             MULTIPLY_13['code_runtime'],
-            Library13=library_13.address,
+            static_link_values={'Library13': library_13.address},
         )
 
         assert '__Library13__' not in expected_code

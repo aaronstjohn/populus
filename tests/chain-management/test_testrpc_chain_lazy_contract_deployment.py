@@ -1,7 +1,9 @@
 import pytest
 
 from populus import Project
-from populus.chain import UnknownContract
+from populus.chain.exceptions import (
+    UnknownContract,
+)
 
 
 @pytest.yield_fixture()
