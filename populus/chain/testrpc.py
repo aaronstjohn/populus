@@ -19,16 +19,6 @@ from .exceptions import (
 )
 
 
-def testrpc_fn_proxy(fn_name):
-    @staticmethod
-    def inner(*args, **kwargs):
-        from testrpc import testrpc
-        fn = getattr(testrpc, fn_name)
-        return fn(*args, **kwargs)
-    inner.__func__.__name__ = fn_name
-    return inner
-
-
 class TestRPCChain(Chain):
     provider = None
     port = None
@@ -66,21 +56,27 @@ class TestRPCChain(Chain):
 
         return self.RegistrarFactory(address=registrar_address)
 
-    full_reset = testrpc_fn_proxy('full_reset')
-    reset = testrpc_fn_proxy('evm_reset')
+    def full_reset(self, *args, **kwargs):
+        return self.rpc_methods.full_reset(*args, **kwargs)
 
-    @staticmethod
-    def snapshot(*args, **kwargs):
-        from testrpc import testrpc
-        return int(testrpc.evm_snapshot(*args, **kwargs), 16)
+    def reset(self, *args, **kwargs):
+        return self.rpc_methods.evm_reset(*args, **kwargs)
 
-    revert = testrpc_fn_proxy('evm_revert')
-    mine = testrpc_fn_proxy('evm_mine')
+    def snapshot(self, *args, **kwargs):
+        return int(self.rpc_methods.evm_snapshot(*args, **kwargs), 16)
+
+    def revert(self, *args, **kwargs):
+        return self.rpc_methods.evm_revert(*args, **kwargs)
+
+    def mine(self, *args, **kwargs):
+        return self.rpc_methods.evm_mine(*args, **kwargs)
+
+    def configure(self, *args, **kwargs):
+        return self.rpc_methods.rpc_configure(*args, **kwargs)
 
     _running = False
 
     def __enter__(self):
-        from testrpc import testrpc
         if self._running:
             raise ValueError("The TesterChain is already running")
 
@@ -88,12 +84,13 @@ class TestRPCChain(Chain):
             self.port = get_open_port()
 
         self.provider = TestRPCProvider(port=self.port)
+        self.rpc_methods = self.provider.server.application.rpc_methods
 
-        testrpc.full_reset()
-        testrpc.rpc_configure('eth_mining', False)
-        testrpc.rpc_configure('eth_protocolVersion', '0x3f')
-        testrpc.rpc_configure('net_version', 1)
-        testrpc.evm_mine()
+        self.full_reset()
+        self.configure('eth_mining', False)
+        self.configure('eth_protocolVersion', '0x3f')
+        self.configure('net_version', 1)
+        self.mine()
 
         wait_for_connection('127.0.0.1', self.port)
         self._running = True
@@ -111,7 +108,7 @@ class TestRPCChain(Chain):
 
     def get_contract(self,
                      contract_name,
-                     link_dependencies=None,
+                     static_link_values=None,
                      deploy_transaction=None,
                      deploy_args=None,
                      deploy_kwargs=None,
@@ -133,12 +130,12 @@ class TestRPCChain(Chain):
             # dependencies available.
             contract_bytecode = self.contract_factories[contract_name].code
             contract_dependencies = self._extract_library_dependencies(
-                contract_bytecode, link_dependencies,
+                contract_bytecode, static_link_values,
             )
             for dependency in contract_dependencies:
                 self.get_contract(
                     dependency,
-                    link_dependencies=link_dependencies,
+                    static_link_values=static_link_values,
                     *args,
                     **kwargs
                 )

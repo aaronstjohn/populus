@@ -299,7 +299,9 @@ class Chain(object):
                               contract_name,
                               static_link_values=None,
                               validate_bytecode=True,
-                              raise_on_error=False):
+                              raise_on_error=False,
+                              use_registrar=True,
+                              use_installed_packages=True):
         if not self.has_registrar:
             raise NoKnownAddress(
                 'The `is_contract_available` API is only usable on chains that '
