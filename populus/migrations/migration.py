@@ -227,7 +227,7 @@ def get_compiled_contracts_from_migrations(migration_classes, chain):
     # newest migrations being preferred over older migrations and falling back
     # to live project contract data last.
     default_contract_data = dict(
-        chain.project.compiled_contracts,
+        chain.compiled_contracts,
         **contract_data_from_migrations
     )
 

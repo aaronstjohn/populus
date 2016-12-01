@@ -31,24 +31,24 @@ def testrpc_chain(project_dir, write_project_file, MATH, LIBRARY_13, MULTIPLY_13
 
     project = Project()
 
-    assert 'Math' in project.compiled_contracts
-    assert 'Library13' in project.compiled_contracts
-    assert 'Multiply13' in project.compiled_contracts
-
     with project.get_chain('testrpc') as chain:
+        assert 'Math' in chain.compiled_contracts
+        assert 'Library13' in chain.compiled_contracts
+        assert 'Multiply13' in chain.compiled_contracts
+
         yield chain
 
 
 @pytest.fixture()
 def with_math_v2(testrpc_chain, write_project_file, MATH_V2):
-    project = Project()
+    chain = testrpc_chain
 
-    prev_hash = project.get_source_file_hash()
+    prev_mtime = chain.get_source_modification_time()
 
     write_project_file('contracts/Math.sol', MATH_V2['source'])
 
-    assert project.get_source_file_hash() != prev_hash
-    assert 'Math' in project.compiled_contracts
+    assert chain.get_source_modification_time() != prev_mtime
+    assert 'Math' in chain.compiled_contracts
 
 
 @pytest.fixture()
@@ -173,7 +173,7 @@ def migration_0003(testrpc_chain, migration_0002, MATH):
 def test_get_contract_factory_with_no_dependencies(testrpc_chain):
     chain = testrpc_chain
 
-    MATH = chain.project.compiled_contracts['Math']
+    MATH = chain.compiled_contracts['Math']
     Math = chain.get_contract_factory('Math')
 
     assert Math.code == MATH['code']
@@ -191,7 +191,7 @@ def test_get_contract_factory_with_missing_dependency(testrpc_chain):
 def test_get_contract_factory_with_declared_dependency(testrpc_chain):
     chain = testrpc_chain
 
-    MULTIPLY_13 = chain.project.compiled_contracts['Multiply13']
+    MULTIPLY_13 = chain.compiled_contracts['Multiply13']
     Multiply13 = chain.get_contract_factory(
         'Multiply13',
         link_dependencies={
@@ -223,7 +223,7 @@ def test_get_contract_factory_with_registrar_dependency(testrpc_chain,
 
     chain.wait.for_receipt(register_txn_hash)
 
-    MULTIPLY_13 = chain.project.compiled_contracts['Multiply13']
+    MULTIPLY_13 = chain.compiled_contracts['Multiply13']
     Multiply13 = chain.get_contract_factory('Multiply13')
 
     expected_code = chain.link_bytecode(
@@ -261,7 +261,7 @@ def test_bytecode_comes_from_project_if_no_migrations(testrpc_chain):
     assert not project.migrations
     chain = testrpc_chain
 
-    MATH = project.compiled_contracts['Math']
+    MATH = chain.compiled_contracts['Math']
     Math = chain.get_contract_factory('Math')
 
     assert Math.abi == MATH['abi']
@@ -275,7 +275,7 @@ def test_bytecode_comes_from_migrations_when_present(testrpc_chain, migration_00
 
     remove_file_if_exists('contracts/Math.sol')
 
-    assert 'Math' not in project.compiled_contracts
+    assert 'Math' not in chain.compiled_contracts
     assert len(project.migrations) == 1
 
     MATH = migration_0001.compiled_contracts['Math']
@@ -292,7 +292,7 @@ def test_bytecode_comes_from_latest_migration(testrpc_chain, migration_0001, mig
 
     remove_file_if_exists('contracts/Math.sol')
 
-    assert 'Math' not in project.compiled_contracts
+    assert 'Math' not in chain.compiled_contracts
     assert len(project.migrations) == 2
 
     MATH_V1 = migration_0001.compiled_contracts['Math']

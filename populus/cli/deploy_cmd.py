@@ -74,7 +74,9 @@ def deploy(ctx, chain_name, deploy_from, contracts_to_deploy):
     if not chain_name:
         chain_name = select_chain(project)
 
-    compiled_contracts = project.compiled_contracts
+    chain = project.get_chain(chain_name)
+
+    compiled_contracts = chain.compiled_contracts
 
     if contracts_to_deploy:
         # validate that we *know* about all of the contracts
@@ -94,9 +96,8 @@ def deploy(ctx, chain_name, deploy_from, contracts_to_deploy):
     else:
         # prompt the user to select the desired contracts they want to deploy.
         # Potentially display the currently deployed status.
-        contracts_to_deploy = [select_project_contract(project)]
+        contracts_to_deploy = [select_project_contract(chain)]
 
-    chain = project.get_chain(chain_name)
     deployed_contracts = OrderedDict()
 
     with chain:

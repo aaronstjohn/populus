@@ -186,8 +186,8 @@ def package_release(ctx, chain_name, wait_for_sync):
 
             # TODO: extract this to a helper.
             while True:
-                contract_name = select_project_contract(project)
-                contract_data = project.compiled_contracts[contract_name]
+                contract_name = select_project_contract(chain)
+                contract_data = chain.compiled_contracts[contract_name]
 
                 raw_data = {
                     'contract_name': contract_name,

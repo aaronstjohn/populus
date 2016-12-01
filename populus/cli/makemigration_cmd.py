@@ -54,6 +54,7 @@ def make_migration(ctx, migration_name):
             )
         ))
 
+    # TODO: migrations now need to be chain specific so... this whole thing has to change.
     compiled_contracts = project.compiled_contracts
 
     new_migration_dict = {
