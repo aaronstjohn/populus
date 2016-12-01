@@ -31,41 +31,39 @@ from .functional import (
 )
 
 
-PACKAGE_MANIFEST_FILENAME = 'epm.json'
+PACKAGE_MANIFEST_FILENAME = './epm.json'
 
 
 def get_package_manifest_path(project_dir):
     return os.path.join(project_dir, PACKAGE_MANIFEST_FILENAME)
 
 
-INSTALLED_PACKAGES_ROOT_DIRNAME = 'installed_packages'
+INSTALLED_PACKAGES_BASE_DIRNAME = './installed_packages'
 
 
-def get_installed_packages_root_dir(project_dir):
-    return os.path.join(project_dir, INSTALLED_PACKAGES_ROOT_DIRNAME)
+def get_installed_packages_base_dir(chain_metadata_dir):
+    return os.path.join(chain_metadata_dir, INSTALLED_PACKAGES_BASE_DIRNAME)
 
 
-def get_installed_packages_dir(project_dir, chain_name):
-    installed_packages_root = get_installed_packages_root_dir(project_dir)
-    return os.path.join(installed_packages_root, chain_name)
+def get_installed_package_dir(chain_metadata_dir, package_name):
+    installed_packages_base_dir = get_installed_packages_base_dir(chain_metadata_dir)
+    return os.path.join(installed_packages_base_dir, package_name)
 
 
 @cast_return_to_tuple
-def find_installed_package_source_files(installed_packages_dir):
-    # TODO: this should not recurse into nested `./installed_packages` directories.
+def find_installed_package_source_files(installed_packages_base_dir):
     return (
         os.path.relpath(source_path)
         for source_path
-        in recursive_find_files(installed_packages_dir, '*.sol')
+        in recursive_find_files(installed_packages_base_dir, '*.sol')
     )
 
 
-CHAIN_LOCKFILE_FILENAME = 'populus.lock'
+INSTALLED_PACKAGES_LOCKFILE_FILENAME = 'populus.lock'
 
 
-def get_chain_lockfile_path(project_dir, chain_name):
-    installed_contracts_dir = get_installed_packages_dir(project_dir, chain_name)
-    return os.path.join(installed_contracts_dir, CHAIN_LOCKFILE_FILENAME)
+def get_installed_packages_lockfile_path(chain_metadata_dir):
+    return os.path.join(chain_metadata_dir, INSTALLED_PACKAGES_LOCKFILE_FILENAME)
 
 
 def create_BIP122_uri(chain_id, resource_type, resource_identifier):

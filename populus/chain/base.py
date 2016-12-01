@@ -7,9 +7,12 @@ from web3.utils.formatting import (
     remove_0x_prefix,
 )
 
+from populus.utils.chains import (
+    get_chain_metadata_dir,
+)
 from populus.utils.packaging import (
-    get_installed_packages_dir,
-    get_chain_lockfile_path,
+    get_installed_packages_base_dir,
+    get_installed_packages_lockfile_path,
 )
 from populus.utils.functional import (
     cached_property,
@@ -91,37 +94,47 @@ class Chain(object):
         raise NotImplementedError("Must be implemented by subclasses")
 
     #
+    # Filesystem Paths and Directories
+    #
+    @property
+    @relpath
+    def metadata_dir(self):
+        return get_chain_metadata_dir(self.project.project_dir, self.chain_name)
+
+    @property
+    def installed_packages_lockfile_path(self):
+        return get_installed_packages_lockfile_path(self.metadata_dir)
+
+    @property
+    @relpath
+    def installed_packages_base_dir(self):
+        return get_installed_packages_base_dir(self.project.project_dir, self.chain_name)
+
+    @relpath
+    def get_installed_package_dir(self, package_name):
+        return os.path.join(self.installed_packages_base_dir, package_name)
+
+    #
     # Packaging
     #
     @property
     def has_lockfile(self):
-        return os.path.exists(self.lockfile_path)
-
-    @property
-    def lockfile_path(self):
-        return get_chain_lockfile_path(self.project_dir, self.chain_name)
+        return os.path.exists(self.installed_packages_lockfile_path)
 
     @property
     def lockfile_data(self):
         if self.has_lockfile:
-            with open(self.lockfile_path) as lockfile_file:
+            with open(self.installed_packages_lockfile_path) as lockfile_file:
                 return json.load(lockfile_file)
         else:
             return {}
 
     @property
-    @relpath
-    def installed_packages_dir(self):
-        return get_installed_packages_dir(self.project.project_dir, self.chain_name)
-
-    @property
     @cast_return_to_dict
     def installed_packages(self):
-        installed_contracts_dir = self.installed_contracts_dir
-
-        for package_name, _ in self.project_lockfile.items():
+        for package_name, _ in self.lockfile_data.items():
             package_source_dir = os.path.relpath(
-                os.path.join(installed_contracts_dir, package_name),
+                self.get_installed_package_dir(package_name),
                 self.project_dir,
             )
             yield (package_name, package_source_dir)

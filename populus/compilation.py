@@ -36,6 +36,9 @@ def compute_import_remappings(source_paths, installed_packages):
         sorted(source_paths),
         sorted(installed_packages.items()),
     )
+    # TODO: This needs to take into account sub-packages such that any
+    # recursively installed packages have their imports appropriately remapped
+    # to their nested installed package dirs.
     for import_path, (package_name, package_source_dir) in source_and_remapping_pairs:
         yield "{import_path}:{package_name}={package_source_dir}".format(
             import_path=import_path,

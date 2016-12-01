@@ -16,18 +16,18 @@ def test_project_compiled_contracts_with_no_default_env(project_dir,
     assert 'code_runtime' in chain.compiled_contracts['Math']
     assert 'abi' in chain.compiled_contracts['Math']
 
-    compiled_contracts_object_id = id(project.compiled_contracts)
+    compiled_contracts_object_id = id(chain.compiled_contracts)
 
-    assert id(project.compiled_contracts) == compiled_contracts_object_id
+    assert id(chain.compiled_contracts) == compiled_contracts_object_id
 
 
 def test_project_fill_contracts_cache(write_project_file,
                                       MATH):
     write_project_file('contracts/Math.sol', MATH['source'])
-    source_mtime = Project().get_source_modification_time()
 
     project = Project()
     chain = project.get_chain('testrpc')
+    source_mtime = chain.get_source_modification_time()
 
     compiled_contracts_object_id = id(chain.compiled_contracts)
 

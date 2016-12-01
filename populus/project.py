@@ -9,14 +9,12 @@ from web3.utils.string import (
 
 from populus.utils.filesystem import (
     get_contracts_dir,
-    get_build_dir,
     get_blockchains_dir,
     get_migrations_dir,
     relpath,
 )
 from populus.utils.packaging import (
     get_package_manifest_path,
-    get_installed_packages_root_dir,
 )
 from populus.utils.geth import (
     get_data_dir,
@@ -36,10 +34,6 @@ from populus.migrations.migration import (
 from populus.migrations.loading import (
     find_project_migrations,
     load_project_migrations,
-)
-from populus.compilation import (
-    find_project_contracts,
-    compile_project_contracts,
 )
 
 from populus.chain import (
@@ -149,11 +143,6 @@ class Project(object):
         with open(self.package_manifest_path) as package_manifest_file:
             return json.load(package_manifest_file)
 
-    @property
-    @relpath
-    def installed_packages_root_dir(self):
-        return get_installed_packages_root_dir(self.project_dir)
-
     #
     # Contracts
     #
@@ -249,6 +238,10 @@ class Project(object):
                                   *chain_args,
                                   **combined_kwargs)
 
+    #
+    # TODO: Most of everything below this line needs to be migrated down to the
+    # chain.
+    #
     @property
     @relpath
     def blockchains_dir(self):
