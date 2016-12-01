@@ -1,6 +1,5 @@
 import os
 import json
-import hashlib
 
 import ipfsapi
 
@@ -11,7 +10,6 @@ from web3.utils.string import (
 from populus.utils.filesystem import (
     get_contracts_dir,
     get_build_dir,
-    get_compiled_contracts_file_path,
     get_blockchains_dir,
     get_migrations_dir,
     relpath,
@@ -166,19 +164,6 @@ class Project(object):
             return self.config.get('populus', 'contracts_dir')
         else:
             return get_contracts_dir(self.project_dir)
-
-    @property
-    @relpath
-    def build_dir(self):
-        if self.config.has_option('populus', 'build_dir'):
-            return self.config.get('populus', 'build_dir')
-        else:
-            return get_build_dir(self.project_dir)
-
-    @property
-    @relpath
-    def compiled_contracts_file_path(self):
-        return get_compiled_contracts_file_path(self.project_dir)
 
     #
     # Local Blockchains

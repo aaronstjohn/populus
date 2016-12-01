@@ -133,7 +133,10 @@ class Chain(object):
     _cached_compiled_contracts = None
 
     def get_source_modification_time(self):
-        source_file_paths = find_project_contracts(self.project_dir, self.contracts_dir)
+        source_file_paths = find_project_contracts(
+            self.project.project_dir,
+            self.project.contracts_dir,
+        )
         return max(
             os.path.getmtime(source_file_path)
             for source_file_path
@@ -141,10 +144,10 @@ class Chain(object):
         ) if len(source_file_paths) > 0 else None
 
     def compiled_contracts_stale(self):
-        return any((
-            self._cached_compiled_contracts_mtime is None,
-            self._cached_compiled_contracts_mtime < self.get_source_modification_time(),
-        ))
+        return (
+            self._cached_compiled_contracts_mtime is None or
+            self._cached_compiled_contracts_mtime < self.get_source_modification_time()
+        )
 
     def fill_contracts_cache(self, contracts, contracts_mtime):
         """

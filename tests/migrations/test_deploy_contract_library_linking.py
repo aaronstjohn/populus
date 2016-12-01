@@ -16,15 +16,15 @@ def prepared_project(project_dir, write_project_file, LIBRARY_13, MULTIPLY_13):
 
     project = Project()
 
-    assert 'Library13' in project.compiled_contracts
-    assert 'Multiply13' in project.compiled_contracts
-
     return project
 
 
 @pytest.yield_fixture()
 def deploy_chain(prepared_project):
     with prepared_project.get_chain('testrpc') as chain:
+        assert 'Library13' in chain.compiled_contracts
+        assert 'Multiply13' in chain.compiled_contracts
+
         yield chain
 
 
@@ -34,7 +34,7 @@ def library_13(deploy_chain):
     web3 = chain.web3
 
     Library13 = chain.contract_factories.Library13
-    LIBRARY_13 = chain.project.compiled_contracts['Library13']
+    LIBRARY_13 = chain.compiled_contracts['Library13']
 
     library_deploy_txn_hash = Library13.deploy()
     library_deploy_txn = web3.eth.getTransaction(library_deploy_txn_hash)
@@ -52,9 +52,9 @@ def verify_multiply_13_linked(library_13, deploy_chain):
     project = chain.project
     web3 = chain.web3
 
-    LIBRARY_13 = project.compiled_contracts['Library13']
+    LIBRARY_13 = chain.compiled_contracts['Library13']
 
-    MULTIPLY_13 = project.compiled_contracts['Multiply13']
+    MULTIPLY_13 = chain.compiled_contracts['Multiply13']
     Multiply13 = chain.contract_factories.Multiply13
 
     def do_verify(deploy_operation):

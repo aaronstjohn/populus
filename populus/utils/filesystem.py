@@ -75,6 +75,7 @@ BUILD_DIR = "./build/"
 
 
 def get_build_dir(project_dir):
+    # TODO: change this to be chain specific.
     build_dir = os.path.join(project_dir, BUILD_DIR)
     ensure_path_exists(build_dir)
     return build_dir
@@ -84,6 +85,7 @@ COMPILED_CONTRACTS_FILENAME = "contracts.json"
 
 
 def get_compiled_contracts_file_path(project_dir):
+    # TODO: change this to be chain specific.
     build_dir = get_build_dir(project_dir)
     return os.path.join(build_dir, COMPILED_CONTRACTS_FILENAME)
 
