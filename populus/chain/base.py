@@ -1,5 +1,4 @@
 import os
-import itertools
 import json
 
 from pylru import lrucache
@@ -31,6 +30,10 @@ from populus.utils.linking import (
     find_link_references,
 )
 
+from populus.compilation import (
+    find_project_contracts,
+    compile_project_contracts,
+)
 from populus.migrations.migration import (
     get_compiled_contracts_from_migrations,
 )
@@ -123,15 +126,59 @@ class Chain(object):
             )
             yield (package_name, package_source_dir)
 
+    #
+    # Contracts
+    #
+    _cached_compiled_contracts_mtime = None
+    _cached_compiled_contracts = None
+
+    def get_source_modification_time(self):
+        source_file_paths = find_project_contracts(self.project_dir, self.contracts_dir)
+        return max(
+            os.path.getmtime(source_file_path)
+            for source_file_path
+            in source_file_paths
+        ) if len(source_file_paths) > 0 else None
+
+    def compiled_contracts_stale(self):
+        return any((
+            self._cached_compiled_contracts_mtime is None,
+            self._cached_compiled_contracts_mtime < self.get_source_modification_time(),
+        ))
+
+    def fill_contracts_cache(self, contracts, contracts_mtime):
+        """
+        :param contracts: become the Project's cache for compiled contracts
+        :param contracts_mtime: last modification of supplied contracts
+        :return:
+        """
+        self._cached_compiled_contracts_mtime = contracts_mtime
+        self._cached_compiled_contracts = contracts
+
+    @property
+    def compiled_contracts(self):
+        if self.compiled_contracts_stale():
+            self._cached_compiled_contracts_mtime = self.get_source_modification_time()
+            # TODO: the hard coded `optimize=True` should be configurable
+            # somehow.
+            _, self._cached_compiled_contracts = compile_project_contracts(
+                project_dir=self.project.project_dir,
+                contracts_dir=self.project.contracts_dir,
+                installed_packages=self.installed_packages,
+                optimize=True,
+            )
+        return self._cached_compiled_contracts
+
     @cached_property
     def contract_factories(self):
         if self.project.migrations:
+            # TODO: deprecate
             compiled_contracts = get_compiled_contracts_from_migrations(
                 self.project.migrations,
                 self,
             )
         else:
-            compiled_contracts = self.project.compiled_contracts
+            compiled_contracts = self.compiled_contracts
 
         return construct_contract_factories(
             self.web3,

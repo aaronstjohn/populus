@@ -17,11 +17,11 @@ def testrpc_chain(project_dir, write_project_file, MATH, LIBRARY_13, MULTIPLY_13
 
     project = Project()
 
-    assert 'Math' in project.compiled_contracts
-    assert 'Library13' in project.compiled_contracts
-    assert 'Multiply13' in project.compiled_contracts
-
     with project.get_chain('testrpc') as chain:
+        assert 'Math' in chain.compiled_contracts
+        assert 'Library13' in chain.compiled_contracts
+        assert 'Multiply13' in chain.compiled_contracts
+
         yield chain
 
 
@@ -31,7 +31,7 @@ def math(testrpc_chain):
     web3 = chain.web3
 
     Math = chain.contract_factories.Math
-    MATH = chain.project.compiled_contracts['Math']
+    MATH = chain.compiled_contracts['Math']
 
     math_deploy_txn_hash = Math.deploy()
     math_deploy_txn = web3.eth.getTransaction(math_deploy_txn_hash)
@@ -49,7 +49,7 @@ def library_13(testrpc_chain):
     web3 = chain.web3
 
     Library13 = chain.contract_factories.Library13
-    LIBRARY_13 = chain.project.compiled_contracts['Library13']
+    LIBRARY_13 = chain.compiled_contracts['Library13']
 
     library_deploy_txn_hash = Library13.deploy()
     library_deploy_txn = web3.eth.getTransaction(library_deploy_txn_hash)

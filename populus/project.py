@@ -180,52 +180,6 @@ class Project(object):
     def compiled_contracts_file_path(self):
         return get_compiled_contracts_file_path(self.project_dir)
 
-    _cached_compiled_contracts_mtime = None
-    _cached_compiled_contracts = None
-
-    def get_source_file_hash(self):
-        source_file_paths = find_project_contracts(self.project_dir, self.contracts_dir)
-        return hashlib.md5(b''.join(
-            open(source_file_path, 'rb').read()
-            for source_file_path
-            in source_file_paths
-        )).hexdigest()
-
-    def get_source_modification_time(self):
-        source_file_paths = find_project_contracts(self.project_dir, self.contracts_dir)
-        return max(
-            os.path.getmtime(source_file_path)
-            for source_file_path
-            in source_file_paths
-        ) if len(source_file_paths) > 0 else None
-
-    def compiled_contracts_stale(self):
-        return self._cached_compiled_contracts_mtime is None or \
-            self._cached_compiled_contracts_mtime < self.get_source_modification_time()
-
-    def fill_contracts_cache(self, contracts, contracts_mtime):
-        """
-        :param contracts: become the Project's cache for compiled contracts
-        :param contracts_mtime: last modification of supplied contracts
-        :return:
-        """
-        self._cached_compiled_contracts_mtime = contracts_mtime
-        self._cached_compiled_contracts = contracts
-
-    @property
-    def compiled_contracts(self):
-        if self.compiled_contracts_stale():
-            self._cached_compiled_contracts_mtime = self.get_source_modification_time()
-            # TODO: the hard coded `optimize=True` should be configurable
-            # somehow.
-            _, self._cached_compiled_contracts = compile_project_contracts(
-                project_dir=self.project_dir,
-                contracts_dir=self.contracts_dir,
-                installed_packages=self.installed_packages,
-                optimize=True,
-            )
-        return self._cached_compiled_contracts
-
     #
     # Local Blockchains
     #
