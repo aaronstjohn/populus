@@ -5,7 +5,7 @@ class ProviderError(Exception):
     pass
 
 
-class BytecodeMismatchError(ProviderError):
+class BytecodeMismatch(ProviderError):
     """
     Indicates there is a bytecode mismatch.
     """
