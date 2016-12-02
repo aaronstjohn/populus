@@ -5,20 +5,11 @@ from populus.utils.linking import (
     find_link_references,
 )
 
+from .static import StaticContractBackend
 from .exceptions import (
     UnknownContract,
     NoKnownAddress,
 )
-
-
-class BaseContractBackend(object):
-    """
-    """
-    def get_contract_address(self, contract_name):
-        """
-        Returns the known address of the requested contract.
-        """
-        raise NotImplementedError("Must be implemented by subclasses")
 
 
 class Provider(object):
@@ -26,7 +17,7 @@ class Provider(object):
 
     def __init__(self, chain, provider_backend_classes, static_link_values):
         self.chain = chain
-        self.provider_backends = tuple(
+        self.provider_backends = (StaticContractBackend(static_link_values),) + tuple(
             ProviderBackend(self)
             for ProviderBackend
             in provider_backend_classes,
@@ -116,3 +107,13 @@ class Provider(object):
 
         linked_bytecode = link_bytecode(bytecode, **resolved_link_references)
         return linked_bytecode
+
+
+class AutoProvider(Provider):
+    """
+    A provider that automatically *tries* to deploy any contracts that aren't
+    available for use with testing.
+
+    TODO: implement from TestRPCChain
+    """
+    pass

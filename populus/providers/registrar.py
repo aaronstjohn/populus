@@ -1,13 +1,10 @@
-"""
-TODO: A chain based registrar
-"""
-from .base import BaseContractBackend
+from .backend import BaseContractBackend
 from .exceptions import (
     NoKnownAddress,
 )
 
 
-class RegistrarProviderBackend(BaseContractBackend):
+class RegistrarContractBackend(BaseContractBackend):
     def get_contract_address(self, contract_name):
         contract_key = 'contract/{name}'.format(name=contract_name)
 
