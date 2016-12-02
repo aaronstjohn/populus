@@ -140,7 +140,7 @@ class Chain(object):
             yield (package_name, package_source_dir)
 
     #
-    # Contracts
+    # Contract Factories
     #
     _cached_compiled_contracts_mtime = None
     _cached_compiled_contracts = None
@@ -156,7 +156,7 @@ class Chain(object):
             in source_file_paths
         ) if len(source_file_paths) > 0 else None
 
-    def compiled_contracts_stale(self):
+    def is_compiled_contract_cache_stale(self):
         return (
             self._cached_compiled_contracts_mtime is None or
             self._cached_compiled_contracts_mtime < self.get_source_modification_time()
@@ -173,7 +173,7 @@ class Chain(object):
 
     @property
     def compiled_contracts(self):
-        if self.compiled_contracts_stale():
+        if self.is_compiled_contract_cache_stale():
             self._cached_compiled_contracts_mtime = self.get_source_modification_time()
             # TODO: the hard coded `optimize=True` should be configurable
             # somehow.
@@ -201,6 +201,9 @@ class Chain(object):
             compiled_contracts,
         )
 
+    #
+    # Registrar
+    #
     @property
     def RegistrarFactory(self):
         return get_registrar(self.web3)
@@ -213,6 +216,9 @@ class Chain(object):
     def registrar(self):
         raise NotImplementedError("Must be implemented by subclasses")
 
+    #
+    # Context manager API
+    #
     def __enter__(self):
         raise NotImplementedError("Must be implemented by subclasses")
 
