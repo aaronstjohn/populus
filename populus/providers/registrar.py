@@ -1,14 +1,13 @@
 """
 TODO: A chain based registrar
 """
-from .base import BaseProviderBackend
+from .base import BaseContractBackend
 from .exceptions import (
     NoKnownAddress,
-    BytecodeMismatch,
 )
 
 
-class RegistrarProviderBackend(BaseProviderBackend):
+class RegistrarProviderBackend(BaseContractBackend):
     def get_contract_factory(self, contract_name):
         # TODO: this caching needs to happen at the `ProviderWrapper` level
         #cache_key = (contract_name,) + tuple(sorted((static_link_values or {}).items()))
@@ -41,34 +40,6 @@ class RegistrarProviderBackend(BaseProviderBackend):
         # TODO: this caching needs to happen at the `ProviderWrapper` level
         #self._factory_cache[cache_key] = contract_factory
         return contract_factory
-
-    def _is_contract_available(self, contract_name):
-        contract_key = 'contract/{name}'.format(name=contract_name)
-
-        if not self.registrar.call().exists(contract_key):
-            return False
-
-        # TODO: make sure that these can't cause exceptions.  maybe catch them..?
-        contract_address = self._get_contract_address()
-        ContractFactory = self._get_contract_factory(contract_name)
-
-        chain_bytecode = self.web3.eth.getCode(contract_address)
-
-        is_bytecode_match = chain_bytecode == ContractFactory.code_runtime
-
-        if not is_bytecode_match:
-            return False
-            # TODO: is there a case where we fail due to bytecode mismatch?
-            #raise BytecodeMismatchError(
-            #    "Bytecode @ {0} does not match expected contract bytecode.\n\n"
-            #    "expected : '{1}'\n"
-            #    "actual   : '{2}'\n".format(
-            #        contract_address,
-            #        ContractFactory.code_runtime,
-            #        chain_bytecode,
-            #    ),
-            #)
-        return True
 
     def _get_contract_address(self, contract_name):
         contract_key = 'contract/{name}'.format(name=contract_name)
