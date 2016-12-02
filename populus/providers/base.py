@@ -6,105 +6,19 @@ from populus.utils.linking import (
 )
 
 from .exceptions import (
+    UnknownContract,
     NoKnownAddress,
 )
 
 
 class BaseContractBackend(object):
     """
-
     """
-    chain = None
-
-    def __init__(self, chain):
-        self.chain = chain
-
-    #
-    # Provider API
-    #
-    def _get_contract_factory(self, contract_name):
-        """
-        Returns a contract factory instance with fully linked bytecode.
-        """
-        raise NotImplementedError("Must be implemented by subclasses")
-
-    def _is_contract_available(self, contract_name):
-        """
-        Returns whether the contract is *known*.  This is a check that can be
-        called prior to `get_contract` to see whether an address for the
-        contract is known.
-        """
-        try:
-            contract_address = self._get_contract_address(contract_name)
-        except NoKnownAddress:
-            return False
-
-        # TODO: this call needs to be made at the `ProviderWrapper` level
-        if not self._are_contract_dependencies_available(contract_name):
-            return False
-
-        try:
-            ContractFactory = self._get_contract_factory(contract_name)
-        except ProviderError:
-            return False
-
-        chain_bytecode = self.web3.eth.getCode(contract_address)
-
-        is_bytecode_match = chain_bytecode == ContractFactory.code_runtime
-
-        if not is_bytecode_match:
-            return False
-        return True
-
-    def _are_contract_dependencies_available(self, contract_name):
-        """
-        Returns whether all of a contracts
-        """
-        BaseContractFactory = self.chain.contract_factories[contract_name]
-        # TODO: the call to `is_contract_available` needs to be done at the `ProviderWrapper` level.
-        return all(
-            self._is_contract_available(link_reference.full_name)
-            for link_reference
-            in find_link_references(
-                BaseContractFactory.code,
-                self.chain.all_contract_names,
-            )
-        )
-
-    # Different for each provider
-    def _get_contract_address(self, contract_name):
+    def get_contract_address(self, contract_name):
         """
         Returns the known address of the requested contract.
-
-        Note: This method should *always* be safe to call if
-        `is_contract_available` returns True.
         """
         raise NotImplementedError("Must be implemented by subclasses")
-
-    # Same for each provider
-    def _get_contract(self, contract_name):
-        """
-        Returns an instance of the contract.
-        """
-        ContractFactory = self._get_contract_factory(contract_name)
-        address = self._get_contract_address(contract_name)
-        return ContractFactory(address=address)
-
-    #
-    # Utility
-    #
-    def link_bytecode(self, bytecode):
-        """
-        Return the fully linked contract bytecode.
-        """
-        resolved_link_references = {
-            link_reference.offset: self._get_contract_address(link_reference.full_name)
-            for link_reference
-            in find_link_references(bytecode, self.chain.all_contract_names)
-        }
-
-        linked_bytecode = link_bytecode(bytecode, **resolved_link_references)
-        return linked_bytecode
 
 
 class Provider(object):
@@ -122,29 +36,40 @@ class Provider(object):
     def get_contract_factory(self, contract_name):
         if contract_name in self._factory_cache:
             return self._factory_cache[contract_name]
-        for provider in self.provider_backends:
-            try:
-                ContractFactory = provider._get_contract_factory(contract_name)
-                self._factory_cache[contract_name] = ContractFactory
-                return ContractFactory
-            except Exception as error:
-                # TODO: catch the correct expections
-                continue
 
-        # TODO: raise the correct expections
-        raise Exception("No known address for contract")
+        if contract_name not in self.chain.contract_factories:
+            raise UnknownContract(
+                "No contract found with the name '{0}'.\n\n"
+                "Available contracts are: {1}".format(
+                    contract_name,
+                    ', '.join((name for name in self.contract_factories.keys())),
+                )
+            )
 
-    def is_contract_available(self, contract_name):
-        return any(
-            provider._is_contract_available(contract_name)
-            for provider
-            in self.provider_backends
+        base_contract_factory = self.contract_factories[contract_name]
+
+        code = self.link_bytecode(base_contract_factory.code)
+        code_runtime = self.link_bytecode(base_contract_factory.code_runtime)
+
+        contract_factory = self.chain.web3.eth.contract(
+            code=code,
+            code_runtime=code_runtime,
+            abi=base_contract_factory.abi,
+            source=base_contract_factory.source,
         )
 
-    def are_contract_dependencies_available(self, contract_name):
-        # TODO: this is wrong
+        self._factory_cache[contract_name] = contract_factory
+        return contract_factory
+
+    def is_contract_available(self, contract_name):
+        try:
+            contract_address = self.get_contract_address(contract_name)
+        except NoKnownAddress:
+            return False
+
         BaseContractFactory = self.chain.contract_factories[contract_name]
-        return all(
+
+        all_dependencies_are_available = all(
             self.is_contract_available(link_reference.full_name)
             for link_reference
             in find_link_references(
@@ -152,23 +77,42 @@ class Provider(object):
                 self.chain.all_contract_names,
             )
         )
+        if not all_dependencies_are_available:
+            return False
+
+        ContractFactory = self.get_contract_factory(contract_name)
+
+        chain_bytecode = self.chain.web3.eth.getCode(contract_address)
+
+        is_bytecode_match = chain_bytecode == ContractFactory.code_runtime
+
+        if not is_bytecode_match:
+            return False
+        return True
 
     def get_contract(self, contract_name):
-        for provider in self.provider_backends:
-            try:
-                return provider._get_contract(contract_name)
-            except Exception as error:
-                # TODO: catch the correct expections
-                continue
-
-        # TODO: raise the correct expections
-        raise Exception("No known address for contract")
+        ContractFactory = self.get_contract_factory(contract_name)
+        address = self.get_contract_address(contract_name)
+        return ContractFactory(address=address)
 
     def get_contract_address(self, contract_name):
         for provider in self.provider_backends:
             try:
-                return provider._get_contract_address(contract_name)
+                return provider.get_contract_address(contract_name)
             except NoKnownAddress as error:
                 continue
 
         raise NoKnownAddress("No known address for contract")
+
+    def link_bytecode(self, bytecode):
+        """
+        Return the fully linked contract bytecode.
+        """
+        resolved_link_references = {
+            link_reference.offset: self.get_contract_address(link_reference.full_name)
+            for link_reference
+            in find_link_references(bytecode, self.chain.all_contract_names)
+        }
+
+        linked_bytecode = link_bytecode(bytecode, **resolved_link_references)
+        return linked_bytecode
